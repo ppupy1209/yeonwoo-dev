@@ -1,6 +1,6 @@
 # 진행 상황 보드 (SSOT)
 
-> 업데이트: 2026-06-11 · claude
+> 업데이트: 2026-06-11 · backend
 
 ## 현재 단계
 **Phase 0 — 스캐폴딩 & 협업 구조 세팅**
@@ -18,8 +18,10 @@
 - [ ] (Phase 2) AI "Ask" 챗봇
 
 ## 백엔드 에이전트 상태
-- **작업 대기 중.** 스택 확정: Java 21 + Spring Boot + JPA + MySQL (ADR-008).
-- 첫 작업 `M-001`(부트스트랩 + 연락/방명록 API)을 `inbox/to-backend.md`에 전달함.
+- **M-001 구현 완료.** `backend/`에 Java 21 + Spring Boot + JPA + MySQL + Flyway + Gradle 백엔드 부트스트랩을 추가함.
+- 구현 API: `POST /api/contact`, `GET /api/guestbook`, `POST /api/guestbook`.
+- 포함: DTO, Bean Validation, 글로벌 에러 포맷, honeypot, IP 기준 in-memory rate limit, CORS 환경변수, Flyway 마이그레이션, Dockerfile, WebMvc/DataJpa 테스트.
+- 검증 제한: 현재 로컬은 Java 8이고 `gradle` 명령이 없어 `gradle test`를 실행하지 못함. Java 21 + Gradle 환경에서 확인 필요.
 - 스코프(Phase 1): 연락 폼 + 방명록 (ADR-009).
 
 ## 보류
@@ -32,4 +34,5 @@
 
 ## 다음 액션
 - (claude) `feat/web-portfolio` 에서 콘텐츠 구조 설계 → 노션 → MDX 이전 → 페이지 구현
-- (backend) `feat/backend-bootstrap` 에서 `M-001` 처리 → 결과를 `inbox/to-frontend.md`에 보고, `status.md` 갱신.
+- (frontend) `inbox/to-frontend.md`의 `B-001` 완료 보고를 보고 연락 폼/방명록 연동.
+- (backend) Java 21 + Gradle 환경에서 `gradle test` 실행 후 필요 시 보완.
