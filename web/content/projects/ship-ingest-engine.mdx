@@ -1,0 +1,27 @@
+---
+title: 선박 운항 데이터 수집 엔진
+slug: ship-ingest-engine
+order: 2
+summary: Ethernet Converter(Serial→TCP) 환경에서 운항·안전 센서 데이터를 실시간 수신·처리하는 수집 엔진
+role: 백엔드 개발 (국방 프로젝트)
+stack: [Java, Netty, TCP/Serial, Batch Insert, Locust]
+metric:
+  label: DB I/O Wait
+  before: "18%"
+  after: "3%"
+---
+
+## 개요
+Ethernet Converter(Serial→TCP) 통신 환경에서 운항(위치/방향)·안전(화재) 센서 데이터를 실시간 수신·처리하는 엔진. TCP Stream의 프레임 디코딩과 비동기 I/O를 효율적으로 처리하기 위해 **Netty**를 채택했다.
+
+## 문제
+- **인프라 제약**: 운용 규모와 예산을 고려해 SSD 대신 HDD를 채택한 환경. HDD는 IOPS가 현저히 낮아 I/O 병목이 구조적으로 발생하기 쉬웠다.
+- **DB Write 병목**: 복합 트래픽에서 초당 300건 이상의 로그가 추가로 발생했고, 각 로그를 단건 Insert로 처리하면서 HDD 제약과 맞물려 DB I/O 병목 발생 (I/O Wait 18%).
+
+## 해결
+- **Batch Insert**: 매 요청마다 수행되던 단건 Insert를 주기·크기 기반 Batch Insert로 전환. 네트워크 왕복 비용 절감뿐 아니라 HDD에 취약한 랜덤 Write를 줄여 디스크 I/O 부하 감소.
+- **부하 테스트**: Locust로 선박 운항·선원 위치·센서 데이터가 동시다발적으로 발생하는 환경을 재현해, 단건과 배치 구조의 DB I/O Wait 변화를 비교.
+
+## 결과
+- DB I/O Wait **18% → 3%**
+- HDD 제약 환경에서도 데이터 수집 지연 없이 안정적 운영 확보

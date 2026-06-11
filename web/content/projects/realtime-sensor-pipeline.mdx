@@ -1,0 +1,31 @@
+---
+title: 실시간 센서 데이터 전송 시스템
+slug: realtime-sensor-pipeline
+order: 1
+summary: 선박 센서(온·습도, 화재, 도어) 데이터를 수집해 외부 서버로 실시간 전송하는 데이터 연동 시스템
+role: 백엔드 개발 (국방 프로젝트)
+stack: [Java, Spring, MQTT, ThreadPool, Locust]
+metric:
+  label: CPU 사용률
+  before: "90%"
+  after: "60%"
+---
+
+## 개요
+선박 내 센서 데이터를 수집해 외부 서버에 실시간 전송하는 시스템. 센서 데이터는 Worker Server에서 수신 후 MQTT 메시지로 변환되어 외부 서버로 전송된다.
+
+## 문제
+- **비효율적인 전송 방식**: 기존 API Polling은 잦은 HTTP 요청으로 서버 부하가 크고 실시간성 보장이 어려웠다.
+- **스레드풀 설정 결함**: 고정 스레드풀 100개 + 무제한 큐로 트래픽 버스트 시 과도한 Context Switching과 Queueing Delay 발생 → CPU 사용률이 90%까지 상승.
+
+## 해결
+- **전송 방식 재검토**: API Polling은 HTTP 연결 오버헤드가 크고 Kafka는 요구사항 대비 운영 복잡도가 높다고 판단 → 경량 메시징 프로토콜 **MQTT** 도입.
+- **부하 테스트**: Locust로 100개 센서가 초당 1회 데이터를 전송하는 환경을 재현.
+- **스레드풀 튜닝**: MQTT 전송 작업을 전용 스레드풀로 분리.
+  - CorePoolSize 100 → 8 로 Context Switching 오버헤드 감소
+  - Queue Capacity 1 로 제한해 Queueing Delay 원천 차단
+  - 최신 데이터의 실시간성을 적재보다 우선해 `DiscardOldestPolicy` 적용(일부 유실 허용)
+
+## 결과
+- CPU 사용률 **90% → 60%**
+- API Polling → MQTT 전환으로 실시간 전송 지연 해소
