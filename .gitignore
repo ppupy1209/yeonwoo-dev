@@ -1,0 +1,16 @@
+# secrets — 절대 커밋 금지
+.env
+.env.*
+!.env.example
+
+# os
+.DS_Store
+Thumbs.db
+
+# editor
+.idea/
+.vscode/
+*.swp
+
+# claude local config
+.claude/
