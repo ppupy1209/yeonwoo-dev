@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { getAllProjects, getProject } from "@/lib/projects";
+import { ArchitectureDiagram } from "@/components/ArchitectureDiagram";
 
 export function generateStaticParams() {
   return getAllProjects().map((project) => ({ slug: project.slug }));
@@ -51,6 +52,7 @@ export default async function ProjectPage({
           </span>
         ))}
       </div>
+      <ArchitectureDiagram slug={project.slug} />
       <div className="prose-portfolio mt-10">
         <Markdown remarkPlugins={[remarkGfm]}>{project.body}</Markdown>
       </div>
