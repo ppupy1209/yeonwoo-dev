@@ -1,9 +1,15 @@
 import { Fragment, type ComponentType } from "react";
 import { architectures, type ArchNode, type TechLogo } from "@/lib/architecture";
 import { RealtimeSensorArch } from "./arch/RealtimeSensorArch";
+import { ShipIngestArch } from "./arch/ShipIngestArch";
+import { PhaseAutoCloseArch } from "./arch/PhaseAutoCloseArch";
+import { EApprovalArch } from "./arch/EApprovalArch";
 
 const DIAGRAMS: Record<string, ComponentType> = {
   "realtime-sensor-pipeline": RealtimeSensorArch,
+  "ship-ingest-engine": ShipIngestArch,
+  "phase-auto-close": PhaseAutoCloseArch,
+  "e-approval": EApprovalArch,
 };
 
 const LOGOS: Record<TechLogo, string> = {
@@ -40,7 +46,7 @@ export function ArchitectureDiagram({ slug }: { slug: string }) {
     <section className="mt-10">
       <h2 className="text-[1.15rem] font-semibold">아키텍처</h2>
       {Diagram ? (
-        <div className="mt-4 overflow-x-auto rounded-xl border border-border p-4">
+        <div className="mt-4 rounded-xl border border-border p-4">
           <Diagram />
         </div>
       ) : (
@@ -56,11 +62,6 @@ export function ArchitectureDiagram({ slug }: { slug: string }) {
             </Fragment>
           ))}
         </div>
-      )}
-      {arch.caption && (
-        <p className="mt-4 rounded-md border-l-2 border-accent bg-surface px-4 py-3 text-sm text-muted">
-          {arch.caption}
-        </p>
       )}
     </section>
   );

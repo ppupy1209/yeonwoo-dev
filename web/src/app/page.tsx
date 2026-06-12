@@ -1,5 +1,4 @@
 import { Hero } from "@/components/Hero";
-import { MetricStrip } from "@/components/MetricStrip";
 import { ProjectCard } from "@/components/ProjectCard";
 import { AboutTerminal } from "@/components/AboutTerminal";
 import { getAllProjects } from "@/lib/projects";
@@ -10,7 +9,6 @@ export default function Home() {
   return (
     <>
       <Hero />
-      <MetricStrip />
       <section id="work" className="mx-auto max-w-3xl px-6 pb-8">
         <h2 className="text-xl font-semibold">Selected work</h2>
         <p className="mt-1 text-sm text-muted">
