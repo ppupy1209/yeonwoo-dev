@@ -62,12 +62,21 @@ export function GroupBox({ x, y, w, h, title, logo }: {
   );
 }
 
-export function NodeBox({ x, y, w, h, label, sub, highlight, logo, icon }: {
+export function NodeBox({ x, y, w, h, label, sub, highlight, logo, icon, centerContent, contentNudgeX = 0 }: {
   x: number; y: number; w: number; h: number;
   label: string; sub?: string; highlight?: boolean; logo?: string; icon?: ReactNode;
+  centerContent?: boolean; contentNudgeX?: number;
 }) {
   const hasLeft = Boolean(logo || icon);
-  const textX = hasLeft ? x + 44 : x + w / 2;
+  const estimateTextWidth = (text: string) =>
+    [...text].reduce((sum, char) => sum + (char.charCodeAt(0) > 255 ? 13.5 : 7.8), 0);
+  const gap = 8;
+  const textWidth = Math.max(estimateTextWidth(label), sub ? estimateTextWidth(sub) : 0);
+  const estimatedWidth = hasLeft ? 22 + gap + textWidth : textWidth;
+  const leftX = x + Math.max(12, (w - estimatedWidth) / 2) + (centerContent ? contentNudgeX : 0);
+  const centerTextX = hasLeft ? leftX + 22 + gap : x + w / 2;
+  const textX = centerContent ? centerTextX : hasLeft ? x + 44 : x + w / 2;
+  const leftIconX = centerContent ? leftX : x + 12;
   const anchor = hasLeft ? "start" : "middle";
   const cy = y + h / 2;
   return (
@@ -78,9 +87,9 @@ export function NodeBox({ x, y, w, h, label, sub, highlight, logo, icon }: {
           stroke: highlight ? "var(--accent)" : "var(--border)",
         }}
         strokeWidth={highlight ? 1.5 : 1} />
-      {logo && <image href={logo} x={x + 12} y={cy - 11} width={22} height={22} />}
+      {logo && <image href={logo} x={leftIconX} y={cy - 11} width={22} height={22} />}
       {icon && (
-        <g transform={`translate(${x + 13}, ${cy - 11})`} style={{ color: MUTED }}>{icon}</g>
+        <g transform={`translate(${leftIconX}, ${cy - 11})`} style={{ color: MUTED }}>{icon}</g>
       )}
       <text x={textX} y={sub ? cy - 2 : cy + 4} textAnchor={anchor}
         style={{ fill: "var(--text)", fontSize: 13, fontWeight: 500 }}>{label}</text>
@@ -199,6 +208,13 @@ export const CircuitBreakerIcon = (
     <circle cx="17" cy="16" r="1.6" fill="currentColor" stroke="none" />
     <line x1="13.5" y1="16" x2="17" y2="16" />
     <line x1="5" y1="16" x2="14" y2="7" />
+  </g>
+);
+
+export const CheckFlowIcon = (
+  <g fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="4" width="16" height="14" rx="2" />
+    <path d="M7 11.5 10 14.5 16 8" />
   </g>
 );
 

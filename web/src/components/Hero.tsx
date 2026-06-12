@@ -19,8 +19,11 @@ export function Hero() {
       <h1 className="mt-4 text-5xl font-semibold tracking-tight sm:text-6xl">
         {profile.name}
       </h1>
+      <p className="mt-4 max-w-xl text-base leading-relaxed text-muted">
+        {profile.tagline}
+      </p>
 
-      <div className="mt-12 flex items-center gap-2.5">
+      <div className="mt-10 flex items-center gap-2.5">
         <span className="h-5 w-1 rounded-full bg-accent" aria-hidden />
         <h2 className="text-xl font-semibold">Skills</h2>
       </div>

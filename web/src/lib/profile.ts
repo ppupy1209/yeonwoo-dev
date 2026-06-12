@@ -2,7 +2,8 @@ export const profile = {
   name: "김연우",
   role: "Software Engineer",
   years: "3년차",
-  email: "ppupy1200@gmail.com",
+  tagline: "실시간 데이터와 분산 환경의 문제를 구조적으로 해결하는 개발자",
+  email: "ppupy1209@naver.com",
   github: "https://github.com/ppupy1209",
   githubHandle: "ppupy1209",
 };
@@ -21,6 +22,6 @@ export const stackTags = [
   "JPA",
   "MySQL",
   "Redis",
-  "AWS EC2",
+  "EC2",
   "RDS",
 ];

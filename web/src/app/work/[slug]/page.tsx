@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { getAllProjects, getProject } from "@/lib/projects";
+import { formatMetric, getAllProjects, getProject } from "@/lib/projects";
 import { ArchitectureDiagram } from "@/components/ArchitectureDiagram";
 
 export function generateStaticParams() {
@@ -53,7 +53,7 @@ export default async function ProjectPage({
       <div className="mt-4 flex items-start justify-between gap-4">
         <h1 className="text-3xl font-semibold tracking-tight">{project.title}</h1>
         <span className="shrink-0 rounded-md bg-accent-soft px-3 py-1 text-sm font-medium text-accent">
-          {project.metric.label} {project.metric.before}→{project.metric.after}
+          {formatMetric(project.metric)}
         </span>
       </div>
       <p className="mt-3 text-muted">{project.summary}</p>

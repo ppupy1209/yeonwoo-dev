@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Project } from "@/lib/projects";
+import { formatMetric, type Project } from "@/lib/projects";
 
 export function ProjectCard({ project }: { project: Project }) {
   return (
@@ -12,7 +12,7 @@ export function ProjectCard({ project }: { project: Project }) {
           {project.title}
         </h3>
         <span className="shrink-0 rounded-md bg-accent-soft px-2.5 py-1 text-xs text-accent">
-          {project.metric.label} {project.metric.before}→{project.metric.after}
+          {formatMetric(project.metric)}
         </span>
       </div>
       <p className="mt-2 text-sm leading-relaxed text-muted">{project.summary}</p>

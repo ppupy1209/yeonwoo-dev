@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
 
-export type ProjectMetric = { label: string; before: string; after: string };
+export type ProjectMetric = { label: string; before?: string; after?: string };
 
 export type ProjectCategory = "work" | "study";
 
@@ -42,4 +42,14 @@ export function getAllProjects(): Project[] {
 
 export function getProject(slug: string): Project | undefined {
   return getAllProjects().find((p) => p.slug === slug);
+}
+
+export function formatMetric(metric: ProjectMetric): string {
+  if (metric.before && metric.after) {
+    return `${metric.label} ${metric.before}→${metric.after}`;
+  }
+  if (metric.before || metric.after) {
+    return `${metric.label} ${metric.before ?? metric.after}`;
+  }
+  return metric.label;
 }

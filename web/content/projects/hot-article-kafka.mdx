@@ -5,64 +5,73 @@ order: 2
 category: study
 summary: MSA에서 좋아요·댓글·조회 이벤트를 Kafka 스트림으로 받아 일 단위 상위 인기글을 실시간 집계하는 시스템
 role: 개인 학습 프로젝트
-stack: [Kafka, Redis, Transactional Outbox, MSA, Spring]
+stack: [Java, Spring, Kafka, Redis, Outbox]
 metric:
-  label: 이벤트 처리
-  before: "배치"
-  after: "실시간 스트림"
+  label: 이벤트 반영 지연
+  before: "1일"
+  after: "10s 내"
 ---
 
 ## 개요
-좋아요·댓글·조회 이벤트를 Kafka로 받아, 당일 생성 게시글의 점수를 실시간으로 계산해 상위 10개 인기글을 선정하는 MSA 서비스.
+- 좋아요, 댓글, 조회 이벤트를 기반으로 당일 인기글 점수 집계
+- Kafka 이벤트 스트림과 Redis Sorted Set을 이용한 Top 10 갱신
 
 ## 문제
-- **배치의 한계**: 매일 0시 전수 계산 방식은 즉시성이 없고, 집계 시점에 타 서비스로 API 요청이 폭증한다.
-- **강결합·유실 위험**: API 직접 호출로 이벤트를 전달하면 서비스 간 결합도가 높아지고, 장애 전파·데이터 유실 위험이 커진다.
 
-## 해결
-- **Kafka 스트림 처리**: 생성/삭제·좋아요·댓글·조회 이벤트를 스트림으로 받아 Redis Sorted Set으로 상위 10개를 실시간 갱신(TTL 7일). 직접 호출 의존성을 제거해 서비스 간 결합도를 낮췄다.
-- **Transactional Outbox**: 비즈니스 로직과 동일 트랜잭션에서 Outbox 테이블에 이벤트를 기록하고, 커밋 후 Message Relay가 Kafka로 전송 → 메시지 발행 신뢰성(at-least-once)을 보장.
+- 매일 0시 전수 계산 방식으로 실시간 인기글 반영 불가
+- 집계 시점에 타 서비스 API 호출이 몰리는 구조
+- API 직접 호출 방식의 서비스 결합도와 이벤트 유실 위험
+- at-least-once 발행 구조에서 중복 이벤트 소비 시 점수 중복 반영 가능
 
-## 결과
-- 배치 → **실시간 스트림** 전환으로 0시 즉시 갱신, 집계용 API 폭증 제거
-- Outbox 패턴으로 메시지 유실 없는 발행과 서비스 간 느슨한 결합 확보
+## 해결 전략
 
-## 핵심 코드
-**① 인기글 컨슈머** — 4개 토픽 구독 → 이벤트 처리 → 수동 커밋
+- 게시글 생성·삭제, 좋아요, 댓글, 조회 이벤트를 Kafka로 발행
+- 인기글 Consumer에서 점수 계산 후 Redis Sorted Set 갱신
+- Transactional Outbox로 DB 변경과 이벤트 발행 사이의 유실 구간 보완
+- Redis dedup 키에 eventId 처리 이력을 저장해 중복 소비 방지
+- Lua script로 dedup 기록과 ZSet 점수 갱신을 원자적으로 처리
+- 실시간 기준을 Outbox relay 주기 포함 10초 내 반영으로 정의
 
-```java
-@KafkaListener(topics = {
-    EventType.Topic.BOARD_ARTICLE,
-    EventType.Topic.BOARD_COMMENT,
-    EventType.Topic.BOARD_LIKE,
-    EventType.Topic.BOARD_VIEW,
-})
-public void listen(String message, Acknowledgment ack) {
-    Event<EventPayload> event = Event.fromJson(message);
-    if (event != null) {
-        hotArticleService.handleEvent(event);
-    }
-    ack.acknowledge();   // 처리 완료 후 수동 커밋
-}
-```
+## 기술 선택 이유
 
-**② Transactional Outbox** — 동일 트랜잭션에서 Outbox 기록(BEFORE_COMMIT) → 커밋 직후 Kafka 발행(AFTER_COMMIT)
+- Kafka
+  - 여러 서비스에서 발생한 이벤트를 순차 로그로 수집하기에 적합
+  - Consumer 장애 후 Offset 기반 재처리 가능
 
-```java
-@TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT)
-public void createOutbox(OutboxEvent outboxEvent) {
-    outboxRepository.save(outboxEvent.getOutbox());   // 동일 트랜잭션에 Outbox 기록
-}
+- Transactional Outbox
+  - DB 커밋과 메시지 발행을 직접 한 트랜잭션으로 묶기 어려운 구조 보완
+  - 미발행 이벤트 재전송으로 at-least-once 발행 보장
+  - at-least-once 특성상 Consumer 멱등성 설계와 함께 사용 필요
 
-@Async("messageRelayPublishEventExecutor")
-@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-public void publishEvent(OutboxEvent outboxEvent) {
-    publishEvent(outboxEvent.getOutbox());            // 커밋 직후 Kafka 발행
-}
-```
+- Redis Sorted Set
+  - 인기글 점수 갱신과 Top N 조회를 같은 자료구조에서 처리 가능
+  - 이벤트 ID dedup 이후 `ZINCRBY`를 수행해 중복 점수 반영 차단
+  - dedup 키 TTL 24시간으로 당일 인기글 집계 범위와 메모리 사용량 균형 확보
+  - 이벤트 100만 건 기준 dedup 키 메모리 약 100~150MB 수준으로 산정
 
-미발행 이벤트는 스케줄러(`publishPendingEvent`)가 10초 주기로 Outbox를 폴링해 재전송하여 at-least-once를 보장한다.
+## 검증
+
+### 테스트 설정
+- 게시글, 댓글, 좋아요, 조회 이벤트 토픽 구독
+- Consumer 처리 완료 후 수동 커밋
+- 미발행 Outbox 이벤트 10초 주기 재전송
+- 부하 모델: 조회 이벤트 80 TPS, 좋아요·댓글 이벤트 20 TPS, 합산 100 TPS
+- 동일 eventId 중복 발행 시 점수 1회 반영 여부 확인
+- 동일 eventId 동시 소비 상황에서 Lua script 원자성 확인
+- Outbox 저장 시점부터 Redis ZSet 반영까지 지연 시간 측정
+
+### 측정 결과
+- 0시 배치 집계에서 10초 내 스트림 반영 구조로 전환
+- 집계용 API 직접 호출 제거
+- 동일 eventId 중복 소비 시 인기글 점수 중복 증가 차단
+- 100 TPS 기준 10분 부하에서 dedup TTL 키 증가량과 Redis 메모리 사용량 확인
+
+## 핵심 흐름
+- 비즈니스 트랜잭션 안에서 Outbox 이벤트 저장
+- 커밋 이후 Message Relay가 Kafka로 발행
+- Consumer가 Lua script로 dedup 키 저장과 Redis Top 10 ZSet 갱신을 한 번에 처리
 
 ## 배운 점
-- **Kafka in MSA**: Append-Only Log·파티션 기반의 고성능, Replication·Offset 재처리로 고가용성을 확보한다.
-- **Transactional Outbox**: DB 트랜잭션과 메시지 발행의 원자성을 분리된 두 단계로 안전하게 연결한다.
+- at-least-once 발행은 Consumer 멱등성 없이는 정합성 보장 불가
+- 실시간 처리는 표현보다 허용 지연 시간을 먼저 정의해야 함
+- dedup 저장소는 TTL, 원자성, 메모리 비용까지 같이 설계해야 함
