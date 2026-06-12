@@ -15,9 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "김연우 — Backend Engineer",
+  title: "김연우 — Software Engineer",
   description:
-    "실시간 데이터와 분산 환경의 정합성 문제를 푸는 백엔드 엔지니어 김연우의 포트폴리오.",
+    "실시간과 분산 환경의 정합성을 설계하는 소프트웨어 엔지니어 김연우의 포트폴리오.",
 };
 
 export default function RootLayout({

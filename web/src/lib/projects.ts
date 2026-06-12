@@ -4,10 +4,13 @@ import matter from "gray-matter";
 
 export type ProjectMetric = { label: string; before: string; after: string };
 
+export type ProjectCategory = "work" | "study";
+
 export type Project = {
   title: string;
   slug: string;
   order: number;
+  category: ProjectCategory;
   summary: string;
   role: string;
   stack: string[];
@@ -26,6 +29,7 @@ export function getAllProjects(): Project[] {
       title: data.title as string,
       slug: data.slug as string,
       order: (data.order as number) ?? 999,
+      category: (data.category as ProjectCategory) ?? "work",
       summary: data.summary as string,
       role: (data.role as string) ?? "",
       stack: (data.stack as string[]) ?? [],

@@ -13,8 +13,8 @@ export function SiteNav() {
           <Link href="/#work" className="transition-colors hover:text-text">
             Work
           </Link>
-          <Link href="/#about" className="transition-colors hover:text-text">
-            About
+          <Link href="/#studies" className="transition-colors hover:text-text">
+            Studies
           </Link>
           <a href={profile.github} className="transition-colors hover:text-text">
             GitHub

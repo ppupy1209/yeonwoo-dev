@@ -5,10 +5,12 @@ export function ProjectCard({ project }: { project: Project }) {
   return (
     <Link
       href={`/work/${project.slug}`}
-      className="block rounded-xl border border-border p-5 transition-colors hover:bg-surface"
+      className="group block rounded-xl border border-border p-5 transition-colors hover:border-accent hover:bg-surface"
     >
       <div className="flex items-start justify-between gap-4">
-        <h3 className="text-base font-medium">{project.title}</h3>
+        <h3 className="text-base font-medium transition-colors group-hover:text-accent">
+          {project.title}
+        </h3>
         <span className="shrink-0 rounded-md bg-accent-soft px-2.5 py-1 text-xs text-accent">
           {project.metric.label} {project.metric.before}→{project.metric.after}
         </span>
