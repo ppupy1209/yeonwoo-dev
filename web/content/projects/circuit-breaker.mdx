@@ -1,0 +1,54 @@
+---
+title: Circuit Breaker 기반 장애 전파 차단
+slug: circuit-breaker
+order: 3
+category: study
+summary: 조회 캐시(Redis) 장애가 전체 응답 지연으로 번지는 것을 Circuit Breaker와 Fallback으로 차단한 안정성 설계
+role: 개인 학습 프로젝트
+stack: [Resilience4j, Circuit Breaker, Redis, Spring, MSA]
+metric:
+  label: Redis 장애 전파
+  before: "지연 확산"
+  after: "즉시 차단"
+---
+
+## 개요
+조회 경로의 캐시인 Redis에 장애가 생기면 응답 지연이 서비스 전체로 번진다. Resilience4j Circuit Breaker로 장애를 격리하고 RDB로 폴백하도록 설계했다.
+
+## 문제
+- **장애 전파**: Redis가 응답하지 못하면 매 요청이 `connection timeout × retry` 만큼 대기한다. 누적된 지연으로 Latency가 급증하고, 캐시 장애가 서비스 전체 장애로 확산된다.
+
+## 해결
+- **Circuit Breaker + Fallback**: Redis 호출을 Circuit Breaker로 감싸고, Circuit이 **Open** 상태이면 Redis를 건너뛰어 즉시 RDB로 폴백한다. 예외 타입(`ArticleCacheMissException` vs `CallNotPermittedException`)별로 fallback을 분기해 캐시 미스와 회로 차단을 구분 처리.
+- **상태 전이 검증**: `slidingWindowSize`·`minimumNumberOfCalls`를 조정해 Closed → Open → Half-Open 전이와 각 폴백 경로를 단위 테스트로 검증.
+
+## 결과
+- Redis 장애 시 timeout 누적 없이 **즉시 RDB 폴백** → 장애 전파 차단, 응답 지연 제거
+- Half-Open 자동 복구로 Redis 회복 시 캐시 경로로 무중단 전환
+
+## 핵심 코드
+Redis 조회를 Circuit Breaker로 감싸고, 발생한 예외 타입으로 fallback을 분기한다. 캐시 미스는 RDB를 조회해 캐시를 채우고, 회로가 Open이면 Redis를 건너뛰어 곧장 RDB로 향한다.
+
+```java
+@CircuitBreaker(name = REDIS_CIRCUIT_BREAKER, fallbackMethod = "fallbackOnRead")
+public ArticleQueryModel read(Long articleId) {
+    return articleQueryModelRepository.read(articleId).get();   // Redis 조회
+}
+
+// Cache Miss → RDB 조회 후 Redis 적재
+private ArticleQueryModel fallbackOnRead(Long articleId, ArticleCacheMissException e) {
+    return fetch(articleId).orElseThrow();
+}
+
+// Circuit Open → Redis 건너뛰고 즉시 RDB 조회
+private ArticleQueryModel fallbackOnRead(Long articleId, CallNotPermittedException e) {
+    log.warn("[REDIS CIRCUIT BREAKER] : OPEN");
+    return readRDB(articleId);
+}
+```
+
+> 이 기능은 `board_study`의 article-read 모듈을 대상으로 학습한 내용으로, 위 코드는 구현 기록 기준입니다.
+
+## 배운 점
+- **장애 격리**: MSA에서는 한 컴포넌트의 장애가 호출 체인을 타고 전체로 번지므로, 경계에서 끊어내는 설계가 필요하다.
+- **Circuit Breaker 상태**: Closed → Open → Half-Open 전이로 장애를 빠르게 차단하고 회복을 자동 감지한다.

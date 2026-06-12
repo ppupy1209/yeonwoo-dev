@@ -28,6 +28,25 @@ export function ElbowArrow({ d }: { d: string }) {
   return <path d={d} fill="none" style={{ stroke: MUTED }} strokeWidth={1.3} markerEnd="url(#arch-arrow)" />;
 }
 
+export function EdgeLabel({ x, y, children, accent }: {
+  x: number; y: number; children: string; accent?: boolean;
+}) {
+  return (
+    <text x={x} y={y} textAnchor="middle"
+      style={{ fill: accent ? "var(--accent)" : MUTED, fontSize: 10.5, fontWeight: 500 }}>
+      {children}
+    </text>
+  );
+}
+
+export function Caption({ x, y, children }: { x: number; y: number; children: string }) {
+  return (
+    <text x={x} y={y} textAnchor="middle" style={{ fill: MUTED, fontSize: 11 }}>
+      {children}
+    </text>
+  );
+}
+
 export function GroupBox({ x, y, w, h, title, logo }: {
   x: number; y: number; w: number; h: number; title: string; logo?: string;
 }) {
@@ -153,6 +172,33 @@ export const LockIcon = (
     <rect x="4" y="10" width="14" height="10" rx="2" />
     <path d="M8 10V7a4 4 0 0 1 8 0v3" />
     <circle cx="12" cy="15" r="1.5" fill="currentColor" stroke="none" />
+  </g>
+);
+
+export const ClientIcon = (
+  <g fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="4" width="16" height="11" rx="1.5" />
+    <line x1="8" y1="19" x2="14" y2="19" />
+    <line x1="11" y1="15" x2="11" y2="19" />
+  </g>
+);
+
+export const KafkaIcon = (
+  <g fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+    <circle cx="6" cy="11" r="2" />
+    <circle cx="15.5" cy="5" r="2" />
+    <circle cx="15.5" cy="17" r="2" />
+    <path d="M7.7 9.9 13.8 6.1" />
+    <path d="M7.7 12.1 13.8 15.9" />
+  </g>
+);
+
+export const CircuitBreakerIcon = (
+  <g fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+    <circle cx="5" cy="16" r="1.6" fill="currentColor" stroke="none" />
+    <circle cx="17" cy="16" r="1.6" fill="currentColor" stroke="none" />
+    <line x1="13.5" y1="16" x2="17" y2="16" />
+    <line x1="5" y1="16" x2="14" y2="7" />
   </g>
 );
 

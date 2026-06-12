@@ -1,0 +1,55 @@
+---
+title: 대용량 목록 조회 최적화
+slug: list-query-optimization
+order: 1
+category: study
+summary: 1,400만 건 게시글에서 깊은 페이지 조회를 Covering Index와 CQRS 캐시로 끌어올린 조회 성능 최적화
+role: 개인 학습 프로젝트
+stack: [MySQL, Covering Index, CQRS, Redis, Kafka]
+metric:
+  label: 깊은 페이지 조회
+  before: "3.8s"
+  after: "0.3s"
+---
+
+## 개요
+약 1,400만 건의 게시글 테이블에서, 페이지가 깊어질수록 급격히 느려지는 목록 조회를 인덱스 설계와 읽기/쓰기 분리(CQRS)로 개선했다.
+
+## 문제
+- **깊은 페이지의 비용**: `ORDER BY article_id DESC LIMIT 30 OFFSET 2,999,970` 조회가 **3.8초**. Secondary Index로 `article_id`를 찾은 뒤 행마다 클러스터드 인덱스를 다시 읽는 테이블 액세스가 발생하고, 버려질 OFFSET 구간까지 전부 조회한다.
+- **읽기 트래픽 집중**: 조회가 많은 서비스에서 매 요청이 원본 RDB로 향하면 부하 분산과 수평 확장이 어렵다.
+
+## 해결
+- **Covering Index 서브쿼리**: 먼저 `(board_id, article_id)` 인덱스만으로 ID 목록을 추리고(커버링 인덱스 → 테이블 액세스 생략), 그 ID로 메타데이터를 JOIN해 필요한 행만 읽도록 분리.
+- **CQRS + Redis 캐시**: 원본(Command)과 조회(Query)를 분리하고, 이벤트로 동기화한 Redis Sorted Set(최신 1,000개)에서 페이지를 조회. 캐시가 부족하면 원본 서비스로 폴백한다.
+
+## 결과
+- 깊은 페이지 조회 **3.8s → 0.3s** (약 12배 단축)
+- 읽기 전용 저장소 분리로 원본 부하 감소 및 조회 측 수평 확장 확보
+
+## 핵심 쿼리
+- 커버링 인덱스로 게시글 ID만 먼저 조회합니다.
+- 조회된 ID로 본문 테이블을 다시 조인합니다.
+- 깊은 페이지에서 불필요한 테이블 접근을 줄입니다.
+
+```sql
+SELECT a.article_id,
+       a.title,
+       a.content,
+       a.board_id,
+       a.writer_id,
+       a.created_at,
+       a.modified_at
+FROM (
+    SELECT article_id
+    FROM article
+    WHERE board_id = :boardId
+    ORDER BY article_id DESC
+    LIMIT :limit OFFSET :offset
+) page
+JOIN article a ON a.article_id = page.article_id;
+```
+
+## 배운 점
+- **Covering Index**: 인덱스에 필요한 컬럼이 모두 포함되면 테이블 액세스(랜덤 I/O) 자체를 생략할 수 있다.
+- **CQRS**: 읽기/쓰기를 분리하면 트래픽 특성에 맞춰 각각 독립적으로 확장할 수 있다.

@@ -4,12 +4,18 @@ import { RealtimeSensorArch } from "./arch/RealtimeSensorArch";
 import { ShipIngestArch } from "./arch/ShipIngestArch";
 import { PhaseAutoCloseArch } from "./arch/PhaseAutoCloseArch";
 import { EApprovalArch } from "./arch/EApprovalArch";
+import { ListQueryOptArch } from "./arch/ListQueryOptArch";
+import { HotArticleKafkaArch } from "./arch/HotArticleKafkaArch";
+import { CircuitBreakerArch } from "./arch/CircuitBreakerArch";
 
 const DIAGRAMS: Record<string, ComponentType> = {
   "realtime-sensor-pipeline": RealtimeSensorArch,
   "ship-ingest-engine": ShipIngestArch,
   "phase-auto-close": PhaseAutoCloseArch,
   "e-approval": EApprovalArch,
+  "list-query-optimization": ListQueryOptArch,
+  "hot-article-kafka": HotArticleKafkaArch,
+  "circuit-breaker": CircuitBreakerArch,
 };
 
 const LOGOS: Record<TechLogo, string> = {
@@ -44,7 +50,10 @@ export function ArchitectureDiagram({ slug }: { slug: string }) {
 
   return (
     <section className="mt-10">
-      <h2 className="text-[1.15rem] font-semibold">아키텍처</h2>
+      <div className="flex items-center gap-2.5">
+        <span className="h-5 w-1 rounded-full bg-accent" aria-hidden />
+        <h2 className="text-[1.15rem] font-semibold">아키텍처</h2>
+      </div>
       {Diagram ? (
         <div className="mt-4 rounded-xl border border-border p-4">
           <Diagram />

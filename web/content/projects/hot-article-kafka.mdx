@@ -1,0 +1,68 @@
+---
+title: 실시간 인기글 집계 시스템
+slug: hot-article-kafka
+order: 2
+category: study
+summary: MSA에서 좋아요·댓글·조회 이벤트를 Kafka 스트림으로 받아 일 단위 상위 인기글을 실시간 집계하는 시스템
+role: 개인 학습 프로젝트
+stack: [Kafka, Redis, Transactional Outbox, MSA, Spring]
+metric:
+  label: 이벤트 처리
+  before: "배치"
+  after: "실시간 스트림"
+---
+
+## 개요
+좋아요·댓글·조회 이벤트를 Kafka로 받아, 당일 생성 게시글의 점수를 실시간으로 계산해 상위 10개 인기글을 선정하는 MSA 서비스.
+
+## 문제
+- **배치의 한계**: 매일 0시 전수 계산 방식은 즉시성이 없고, 집계 시점에 타 서비스로 API 요청이 폭증한다.
+- **강결합·유실 위험**: API 직접 호출로 이벤트를 전달하면 서비스 간 결합도가 높아지고, 장애 전파·데이터 유실 위험이 커진다.
+
+## 해결
+- **Kafka 스트림 처리**: 생성/삭제·좋아요·댓글·조회 이벤트를 스트림으로 받아 Redis Sorted Set으로 상위 10개를 실시간 갱신(TTL 7일). 직접 호출 의존성을 제거해 서비스 간 결합도를 낮췄다.
+- **Transactional Outbox**: 비즈니스 로직과 동일 트랜잭션에서 Outbox 테이블에 이벤트를 기록하고, 커밋 후 Message Relay가 Kafka로 전송 → 메시지 발행 신뢰성(at-least-once)을 보장.
+
+## 결과
+- 배치 → **실시간 스트림** 전환으로 0시 즉시 갱신, 집계용 API 폭증 제거
+- Outbox 패턴으로 메시지 유실 없는 발행과 서비스 간 느슨한 결합 확보
+
+## 핵심 코드
+**① 인기글 컨슈머** — 4개 토픽 구독 → 이벤트 처리 → 수동 커밋
+
+```java
+@KafkaListener(topics = {
+    EventType.Topic.BOARD_ARTICLE,
+    EventType.Topic.BOARD_COMMENT,
+    EventType.Topic.BOARD_LIKE,
+    EventType.Topic.BOARD_VIEW,
+})
+public void listen(String message, Acknowledgment ack) {
+    Event<EventPayload> event = Event.fromJson(message);
+    if (event != null) {
+        hotArticleService.handleEvent(event);
+    }
+    ack.acknowledge();   // 처리 완료 후 수동 커밋
+}
+```
+
+**② Transactional Outbox** — 동일 트랜잭션에서 Outbox 기록(BEFORE_COMMIT) → 커밋 직후 Kafka 발행(AFTER_COMMIT)
+
+```java
+@TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT)
+public void createOutbox(OutboxEvent outboxEvent) {
+    outboxRepository.save(outboxEvent.getOutbox());   // 동일 트랜잭션에 Outbox 기록
+}
+
+@Async("messageRelayPublishEventExecutor")
+@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+public void publishEvent(OutboxEvent outboxEvent) {
+    publishEvent(outboxEvent.getOutbox());            // 커밋 직후 Kafka 발행
+}
+```
+
+미발행 이벤트는 스케줄러(`publishPendingEvent`)가 10초 주기로 Outbox를 폴링해 재전송하여 at-least-once를 보장한다.
+
+## 배운 점
+- **Kafka in MSA**: Append-Only Log·파티션 기반의 고성능, Replication·Offset 재처리로 고가용성을 확보한다.
+- **Transactional Outbox**: DB 트랜잭션과 메시지 발행의 원자성을 분리된 두 단계로 안전하게 연결한다.

@@ -50,4 +50,30 @@ export const architectures: Record<string, Architecture> = {
     ],
     caption: "WHERE에 상태 조건을 결합한 원자적 UPDATE → Lost Update 원천 차단",
   },
+  "list-query-optimization": {
+    nodes: [
+      { label: "원본 서비스", sub: "MySQL · 쓰기", tech: "mysql" },
+      { label: "Kafka", sub: "변경 이벤트" },
+      { label: "조회 서비스", sub: "Covering Index", tech: "spring", highlight: true },
+      { label: "Redis", sub: "Sorted Set 캐시", tech: "redis" },
+    ],
+    caption: "1,400만 건 게시글 목록 조회 흐름",
+  },
+  "hot-article-kafka": {
+    nodes: [
+      { label: "이벤트 서비스", sub: "좋아요·댓글·조회", tech: "spring" },
+      { label: "Outbox + Relay", sub: "발행 신뢰성" },
+      { label: "Kafka", sub: "이벤트 스트림", highlight: true },
+      { label: "Redis", sub: "Top 10 ZSet", tech: "redis" },
+    ],
+    caption: "이벤트 스트림 기반 인기글 집계 흐름",
+  },
+  "circuit-breaker": {
+    nodes: [
+      { label: "조회 서비스", sub: "Circuit Breaker", tech: "spring", highlight: true },
+      { label: "Redis", sub: "Closed · 캐시 Hit", tech: "redis" },
+      { label: "원본 RDB", sub: "Open · 폴백", tech: "mysql" },
+    ],
+    caption: "Circuit Open 시 Redis를 건너뛰고 즉시 RDB로 폴백 → 장애 전파 차단",
+  },
 };
